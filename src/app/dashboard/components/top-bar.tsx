@@ -159,11 +159,17 @@ export function TopBar() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-2">
-                <img 
-                  src={user?.imageUrl || ''} 
-                  alt="Profile" 
-                  className="h-6 w-6 rounded-full bg-muted object-cover" 
-                />
+                {user?.imageUrl ? (
+                  <img 
+                    src={user.imageUrl} 
+                    alt="Profile" 
+                    className="h-6 w-6 rounded-full bg-muted object-cover" 
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                )}
                 <span className="hidden sm:inline-block">
                   {user?.fullName || user?.firstName || user?.username || 'Anonymous User'}
                 </span>

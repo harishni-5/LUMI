@@ -5,9 +5,14 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { Sidebar } from "./sidebar";
+import { Sidebar, TabType } from "./sidebar";
 
-export function MobileNav() {
+interface MobileNavProps {
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+}
+
+export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -26,7 +31,7 @@ export function MobileNav() {
               <span className="sr-only">Close</span>
             </Dialog.Close>
           </div>
-          <Sidebar />
+          <Sidebar activeTab={activeTab} onTabChange={onTabChange} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

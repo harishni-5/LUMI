@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
   FileAudio,
@@ -9,18 +8,26 @@ import {
   Settings,
   BarChart2,
   Users,
+  User,
 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+
+export type TabType = "overview" | "meetings" | "tasks" | "settings";
 
 const navigation = [
-  { name: "Overview", href: "/dashboard", icon: BarChart2 },
-  { name: "Meetings", href: "/dashboard/meetings", icon: FileAudio },
-  { name: "Tasks", href: "/dashboard/tasks", icon: CheckSquare },
-  { name: "Team", href: "/dashboard/team", icon: Users },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Overview", tab: "overview" as TabType, icon: BarChart2 },
+  { name: "Meetings", tab: "meetings" as TabType, icon: FileAudio },
+  { name: "Tasks", tab: "tasks" as TabType, icon: CheckSquare },
+  { name: "Settings", tab: "settings" as TabType, icon: Settings },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
+interface SidebarProps {
+  activeTab: TabType;
+  onTabChange: (tab: TabType) => void;
+}
+
+export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+  const { user, isLoaded } = useUser();
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card px-3 py-4">
@@ -32,13 +39,13 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-2">
         {navigation.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = activeTab === item.tab;
           return (
-            <Link
+            <button
               key={item.name}
-              href={item.href}
+              onClick={() => onTabChange(item.tab)}
               className={cn(
-                "group flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "group flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -46,7 +53,7 @@ export function Sidebar() {
             >
               <item.icon className="mr-3 h-5 w-5" />
               {item.name}
-            </Link>
+            </button>
           );
         })}
       </nav>
@@ -54,10 +61,24 @@ export function Sidebar() {
       {/* User Profile */}
       <div className="mt-auto border-t px-3 py-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-muted" />
+          {user?.imageUrl ? (
+            <img 
+              src={user.imageUrl} 
+              alt="Profile" 
+              className="h-8 w-8 rounded-full bg-muted object-cover"
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-4 w-4 text-primary" />
+            </div>
+          )}
           <div className="flex flex-col">
-            <span className="text-sm font-medium">John Doe</span>
-            <span className="text-xs text-muted-foreground">john@example.com</span>
+            <span className="text-sm font-medium">
+              {user?.fullName || user?.firstName || user?.username || 'Anonymous User'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {user?.primaryEmailAddress?.emailAddress || ''}
+            </span>
           </div>
         </div>
       </div>

@@ -1,24 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IRIS - Meeting Assistant
+
+IRIS is an intelligent meeting assistant that helps you capture, analyze, and act on your meetings. It provides automatic transcription, AI-powered analysis, and task management capabilities.
+
+## Features
+
+- 🎥 Meeting Recording & Transcription
+- 🤖 AI-Powered Meeting Analysis
+- 📋 Automated Task Extraction
+- 📊 Meeting Insights & Summaries
+- 🔄 Task Management Integration
+- 🌓 Dark/Light Mode Support
+
+## Tech Stack
+
+- Next.js 14 (App Router)
+- TypeScript
+- Tailwind CSS
+- Shadcn/ui Components
+- Clerk Authentication
+- Local Storage for Data Management
+- OpenAI Whisper for Transcription
+- Llama for AI Analysis
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/iris.git
+cd iris
+```
 
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+Create a `.env.local` file in the root directory and add:
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
+
+4. Run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The following environment variables are required:
+
+- `OPENAI_API_KEY`: Your OpenAI API key for transcription
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key
+- `CLERK_SECRET_KEY`: Clerk secret key
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Learn More
 

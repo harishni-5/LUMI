@@ -1,14 +1,170 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Upload, FileAudio, Clock, CheckCircle } from "lucide-react";
+import { Upload, FileAudio, Clock, CheckCircle, Play, Trash2, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { useState, useRef, useEffect } from "react";
+
+// Define the meeting type
+type Meeting = {
+  id: string;
+  title: string;
+  date: string;
+  status: string;
+  progress: number;
+  url: string;
+  blob?: Blob;
+};
 
 export function MainContent() {
+  const [uploadedFiles, setUploadedFiles] = useState<Meeting[]>([]);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<Meeting | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dbReady, setDbReady] = useState(false);
+
+  // Initialize IndexedDB
+  useEffect(() => {
+    const request = indexedDB.open('meetingsDB', 1);
+
+    request.onerror = (event) => {
+      console.error("Database error:", event);
+    };
+
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('meetings')) {
+        db.createObjectStore('meetings', { keyPath: 'id' });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      setDbReady(true);
+      loadMeetingsFromDB();
+    };
+  }, []);
+
+  // Load meetings from IndexedDB
+  const loadMeetingsFromDB = async () => {
+    const db = await openDB();
+    const transaction = db.transaction(['meetings'], 'readonly');
+    const store = transaction.objectStore('meetings');
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      const meetings = request.result;
+      meetings.forEach(meeting => {
+        if (meeting.blob) {
+          meeting.url = URL.createObjectURL(meeting.blob);
+        }
+      });
+      setUploadedFiles(meetings);
+    };
+  };
+
+  // Helper function to open DB connection
+  const openDB = (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('meetingsDB', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+  };
+
+  // Save meeting to IndexedDB
+  const saveMeetingToDB = async (meeting: Meeting) => {
+    const db = await openDB();
+    const transaction = db.transaction(['meetings'], 'readwrite');
+    const store = transaction.objectStore('meetings');
+    store.put(meeting);
+  };
+
+  // Delete meeting from IndexedDB
+  const deleteMeetingFromDB = async (id: string) => {
+    const db = await openDB();
+    const transaction = db.transaction(['meetings'], 'readwrite');
+    const store = transaction.objectStore('meetings');
+    await store.delete(id);
+  };
+
+  const handleDeleteMeeting = async (meeting: Meeting) => {
+    try {
+      await deleteMeetingFromDB(meeting.id);
+      setUploadedFiles(prev => prev.filter(m => m.id !== meeting.id));
+      
+      // Revoke the object URL to free up memory
+      if (meeting.url) {
+        URL.revokeObjectURL(meeting.url);
+      }
+    } catch (error) {
+      console.error('Error deleting meeting:', error);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const blob = new Blob([file], { type: file.type });
+      const url = URL.createObjectURL(blob);
+      
+      const newMeeting: Meeting = {
+        id: crypto.randomUUID(), // Generate unique ID
+        title: file.name,
+        date: new Date().toLocaleString(),
+        status: "Completed",
+        progress: 100,
+        url: url,
+        blob: blob
+      };
+
+      // Update state
+      setUploadedFiles(prev => [newMeeting, ...prev]);
+      
+      // Save to IndexedDB
+      await saveMeetingToDB(newMeeting);
+    }
+  };
+
+  const handlePlayMedia = (meeting: Meeting) => {
+    setCurrentlyPlaying(meeting);
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Video Player Modal */}
+      {currentlyPlaying && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-background p-4 rounded-lg w-full max-w-4xl mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">{currentlyPlaying.title}</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setCurrentlyPlaying(null)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            {currentlyPlaying.blob?.type.includes('video') ? (
+              <video
+                src={currentlyPlaying.url}
+                controls
+                className="w-full rounded-lg"
+                autoPlay
+              />
+            ) : (
+              <audio
+                src={currentlyPlaying.url}
+                controls
+                className="w-full"
+                autoPlay
+              />
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Upload Section */}
       <section>
         <Card className="p-8">
@@ -23,8 +179,17 @@ export function MainContent() {
             <p className="mb-6 text-muted-foreground">
               Drag and drop your audio or video file, or click to browse
             </p>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept="audio/*,video/*"
+              className="hidden"
+            />
             <div className="flex gap-4">
-              <Button size="lg">Choose File</Button>
+              <Button size="lg" onClick={() => fileInputRef.current?.click()}>
+                Choose File
+              </Button>
               <Button variant="outline" size="lg">Browse Library</Button>
             </div>
           </div>
@@ -37,22 +202,9 @@ export function MainContent() {
         <section>
           <h2 className="mb-4 text-xl font-semibold">Recent Meetings</h2>
           <div className="space-y-4">
-            {[
-              {
-                title: "Product Review",
-                date: "Today, 2:00 PM",
-                status: "Processing",
-                progress: 65,
-              },
-              {
-                title: "Team Sync",
-                date: "Yesterday",
-                status: "Completed",
-                progress: 100,
-              },
-            ].map((meeting, index) => (
+            {uploadedFiles.map((meeting, index) => (
               <motion.div
-                key={index}
+                key={meeting.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
@@ -68,9 +220,31 @@ export function MainContent() {
                         <p className="text-sm text-muted-foreground">{meeting.date}</p>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {meeting.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {meeting.url && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePlayMedia(meeting)}
+                            className="text-primary"
+                          >
+                            <Play className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteMeeting(meeting)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {meeting.status}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-4">
                     <Progress value={meeting.progress} className="h-2" />

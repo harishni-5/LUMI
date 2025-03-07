@@ -130,7 +130,6 @@ Create a `.env.local` file in the root directory and add:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key
-NEXT_WHISPER_API_KEY=your_whisper_api_key
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 CLERK_SECRET_KEY=your_clerk_secret_key
 ```
@@ -148,7 +147,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to access th
 The following environment variables are required:
 
 - `OPENAI_API_KEY`: API key for OpenAI-based transcription and analysis
-- `NEXT_WHISPER_API_KEY`: API key for Whisper speech-to-text processing
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key
 - `CLERK_SECRET_KEY`: Clerk secret key
 

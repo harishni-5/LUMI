@@ -587,10 +587,10 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
     const file = event.target.files?.[0];
     if (!file) return;
       
+    // Create a unique ID for the meeting
+    const meetingId = crypto.randomUUID();
+    
     try {
-      // Create a unique ID for the meeting
-      const meetingId = crypto.randomUUID();
-      
       // Create a new meeting object
       const newMeeting: Meeting = {
         id: meetingId,
@@ -613,16 +613,12 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
       const formData = new FormData();
       formData.append('audio', file);
       
-      // First, detect the language (small sample for quick detection)
+      // First, detect the language
       setIsUploading(true);
       setUploadProgress(10);
       
-      // Create a small sample of the audio file for language detection
-      const sampleSize = Math.min(file.size, 1024 * 1024); // 1MB max sample
-      const sampleBlob = file.slice(0, sampleSize);
-      
       const sampleFormData = new FormData();
-      sampleFormData.append('audio', sampleBlob);
+      sampleFormData.append('audio', file.slice(0, Math.min(file.size, 1024 * 1024)));
       sampleFormData.append('detectOnly', 'true');
       
       const detectResponse = await fetch('/api/transcribe', {
@@ -657,7 +653,6 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
       setUploadProgress(50);
       setIsTranscribing(true);
       
-      // Start upload for full transcription
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData
@@ -669,39 +664,50 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
 
       const data = await response.json();
       
-      setTranscriptionProgress(100);
+      // Update the meeting object with transcription data
+      setUploadedFiles(prev => prev.map(meeting => {
+        if (meeting.id === meetingId) {
+          return {
+            ...meeting,
+            status: "Completed",
+            progress: 100,
+            transcript: data.transcript,
+            wordTimings: data.wordTimings,
+            language: detectedLanguage,
+            languageName: detectData.detectedLanguageName,
+            isTranslated: shouldTranslate
+          } as Meeting;
+        }
+        return meeting;
+      }));
 
-      // Update meeting with transcript and word timings
-      const updatedMeeting: Meeting = {
-        ...newMeeting,
-        status: "Processing",
-        progress: 50,
-        transcript: data.transcript,
-        wordTimings: data.wordTimings,
-        language: data.language || detectedLanguage,
-        languageName: data.languageName,
-        isTranslated: data.isTranslated || false
-      };
+      setIsUploading(false);
+      setIsTranscribing(false);
+      setUploadProgress(100);
 
-      // Update state
-      setUploadedFiles(prev =>
-        prev.map(m => m.id === meetingId ? updatedMeeting : m)
-      );
-
-      // Start analysis
-      await analyzeMeeting(updatedMeeting);
-
-      // Final update
-      setUploadedFiles(prev =>
-        prev.map(m => m.id === meetingId ? {
-          ...m,
-          status: "Ready",
-          progress: 100
-        } : m)
-      );
-
+      // Start analysis if transcription was successful
+      if (data.transcript) {
+        await analyzeMeeting(meetingId, data.transcript);
+      }
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Upload error:', error);
+      
+      // Update the meeting status to error
+      setUploadedFiles(prev => prev.map(meeting => {
+        if (meeting.id === meetingId) {
+          return {
+            ...meeting,
+            status: "Error",
+            progress: 0
+          } as Meeting;
+        }
+        return meeting;
+      }));
+
+      setIsUploading(false);
+      setIsTranscribing(false);
+      setUploadProgress(0);
+      
       toast({
         title: "Error",
         description: "Failed to process the audio file. Please try again.",
@@ -710,8 +716,10 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
     }
   };
 
-  async function analyzeTranscript(transcript: string): Promise<any> {
+  const analyzeMeeting = async (meetingId: string, transcript: string): Promise<void> => {
     try {
+      setIsAnalyzing(true);
+      
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -720,57 +728,39 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
         body: JSON.stringify({ transcript }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        console.error('Analysis failed:', data);
-        throw new Error(data.error || data.details || 'Analysis failed');
+        throw new Error('Failed to analyze transcript');
       }
 
-      return data.analysis;
+      const analysisData = await response.json();
+      
+      // Update the meeting with analysis results
+      setUploadedFiles(prev => prev.map(meeting => {
+        if (meeting.id === meetingId) {
+          return {
+            ...meeting,
+            analysis: analysisData.analysis
+          } as Meeting;  // Type assertion to ensure type safety
+        }
+        return meeting;
+      }));
+
     } catch (error) {
       console.error('Analysis error:', error);
-      throw new Error(error instanceof Error ? error.message : 'Failed to analyze transcript');
-    }
-  }
-
-  async function analyzeMeeting(meeting: Meeting): Promise<void> {
-    try {
-      setIsAnalyzing(true);
-      const analysis = await analyzeTranscript(meeting.transcript || '');
-      
-      // Update the meeting with the analysis results
-      const updatedMeeting = {
-        ...meeting,
-        analysis: {
-          discussions: analysis.discussions,
-          summary: analysis.summary,
-          tasks: analysis.tasks,
-        },
-      };
-
-      // Update the meetings array with the new analysis
-      setUploadedFiles(prevMeetings =>
-        prevMeetings.map((m) =>
-          m.id === meeting.id ? updatedMeeting : m
-        )
-      );
-    } catch (error) {
-      console.error('Failed to analyze meeting:', error);
       toast({
-        title: 'Analysis Failed',
-        description: error instanceof Error ? error.message : 'Failed to analyze meeting',
-        variant: 'destructive',
+        title: "Analysis Error",
+        description: "Failed to analyze the transcript. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsAnalyzing(false);
     }
-  }
+  };
 
   const handlePlayMedia = async (meeting: Meeting) => {
     setCurrentlyPlaying(meeting);
     if (meeting.transcript && !meeting.analysis) {
-      await analyzeMeeting(meeting);
+      await analyzeMeeting(meeting.id, meeting.transcript);
     }
   };
 

@@ -2,26 +2,29 @@
 
 
 
-![Screenshot 2025-03-07 082534](https://github.com/user-attachments/assets/5242b4d2-3eb0-4cce-bd95-16eb9f3f8e05)
+# Iris.ai
 
 ### Landing Page
 
+![Screenshot 2025-03-07 082534](https://github.com/user-attachments/assets/5242b4d2-3eb0-4cce-bd95-16eb9f3f8e05)
+
+### Authentication
+
 ![Screenshot 2025-03-07 082659](https://github.com/user-attachments/assets/ed226721-5350-49c6-a908-cc8445c8938f)
  
-
-
-![Screenshot 2025-03-07 084526](https://github.com/user-attachments/assets/2c10d0b2-f5bd-494f-9e1d-0147fe44437b)
-
+### Dashboard
 
 ![Screenshot 2025-03-07 082901](https://github.com/user-attachments/assets/042e5b18-74fc-4458-9c24-0c8189a9bef8)
 
+### Dashboard
 
 ![Screenshot 2025-03-07 083006](https://github.com/user-attachments/assets/4c7a7128-0f96-4d16-ac3b-1a1fd759c6d8)
 
+### Uploading video screen
 
-![Screenshot 2025-03-07 095141](https://github.com/user-attachments/assets/034484bf-3b5e-4a91-8672-49d42db0946a)
+![Screenshot 2025-03-07 084526](https://github.com/user-attachments/assets/2c10d0b2-f5bd-494f-9e1d-0147fe44437b)
 
-
+### Uploading video screen
 
 ![Screenshot 2025-03-07 084242](https://github.com/user-attachments/assets/7fe18fb3-87e5-4649-bde8-be78ccb6f855)
 
@@ -48,7 +51,6 @@
 
 
 ![Screenshot 2025-03-07 084148](https://github.com/user-attachments/assets/940ffe99-93c9-40e2-a4a6-68ab7dfd3382)
-
 
 
 

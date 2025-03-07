@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useRef, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser, useClerk, UserButton } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -89,6 +89,12 @@ function TabContent({
   setTheme,
   handleSignOut
 }: TabContentProps) {
+  const router = useRouter();
+  
+  const handleViewMeetingDetails = (meeting: Meeting) => {
+    router.push(`/dashboard/meetings/${meeting.id}`);
+  };
+  
   switch (activeTab) {
     case "meetings":
       return (
@@ -261,40 +267,11 @@ function TabContent({
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold">Meeting Tasks</h2>
             <Button variant="outline" size="sm" onClick={() => onTabChange("meetings")}>
-              View Meetings
+              collapse
             </Button>
           </div>
 
-          {/* Add Trello Integration */}
-          <div className="mb-6">
-            <TrelloIntegration 
-              tasks={meetings
-                .filter(m => m.analysis?.tasks)
-                .flatMap(meeting => {
-                  if (!meeting.analysis?.tasks) return [];
-                  return meeting.analysis.tasks
-                    .split(/\d+\.\s/)
-                    .filter(Boolean)
-                    .map(task => {
-                      const lines = task.trim().split('\n');
-                      const title = lines[0];
-                      const details = lines.slice(1);
-                      return {
-                        title,
-                        description: details.join('\n'),
-                        meetingId: meeting.id,
-                        meetingTitle: meeting.title
-                      };
-                    });
-                })}
-              onSync={() => {
-                toast({
-                  title: "Tasks Synced",
-                  description: "Your tasks have been synced with Trello successfully."
-                });
-              }}
-            />
-          </div>
+         
 
           {/* Tasks Content - Scrollable */}
           <div className="flex-1 overflow-y-auto pr-4 -mr-4">
@@ -323,7 +300,7 @@ function TabContent({
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => onMeetingPlay(meeting)}
+                          onClick={() => handleViewMeetingDetails(meeting)}
                         >
                           View Meeting
                         </Button>
@@ -347,11 +324,7 @@ function TabContent({
                 <h2 className="text-2xl font-semibold mb-1">Settings</h2>
                 <p className="text-muted-foreground">Manage your account and preferences</p>
               </div>
-              <img 
-                src={user?.imageUrl} 
-                alt="Profile" 
-                className="h-16 w-16 rounded-full bg-muted object-cover ring-2 ring-primary/10"
-              />
+              <UserButton afterSignOutUrl="/" />
             </div>
 
             <div className="space-y-6">
@@ -640,18 +613,51 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
       const formData = new FormData();
       formData.append('audio', file);
       
-      // Ask user if they want to translate non-English audio
-      const shouldTranslate = await new Promise<boolean>((resolve) => {
-        if (confirm("Is this audio in a language other than English? Click OK to translate to English, or Cancel to transcribe as-is.")) {
-          resolve(true);
-        } else {
-          resolve(false);
-        }
+      // First, detect the language (small sample for quick detection)
+      setIsUploading(true);
+      setUploadProgress(10);
+      
+      // Create a small sample of the audio file for language detection
+      const sampleSize = Math.min(file.size, 1024 * 1024); // 1MB max sample
+      const sampleBlob = file.slice(0, sampleSize);
+      
+      const sampleFormData = new FormData();
+      sampleFormData.append('audio', sampleBlob);
+      sampleFormData.append('detectOnly', 'true');
+      
+      const detectResponse = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: sampleFormData
       });
+      
+      if (!detectResponse.ok) {
+        throw new Error('Failed to detect language');
+      }
+      
+      const detectData = await detectResponse.json();
+      const detectedLanguage = detectData.detectedLanguage || 'unknown';
+      const isEnglish = detectedLanguage === 'en' || detectedLanguage === 'english';
+      
+      setUploadProgress(30);
+      
+      // Ask user if they want to translate non-English audio
+      let shouldTranslate = false;
+      
+      if (!isEnglish) {
+        const languageName = detectData.detectedLanguageName || detectedLanguage;
+        shouldTranslate = window.confirm(
+          `This audio appears to be in ${languageName}. Would you like to translate it to English?\n\n` +
+          `Click OK to translate to English, or Cancel to transcribe in the original language.`
+        );
+      }
 
       formData.append('translate', shouldTranslate.toString());
+      formData.append('detectedLanguage', detectedLanguage);
 
-      // Start upload
+      setUploadProgress(50);
+      setIsTranscribing(true);
+      
+      // Start upload for full transcription
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData
@@ -662,6 +668,8 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
       }
 
       const data = await response.json();
+      
+      setTranscriptionProgress(100);
 
       // Update meeting with transcript and word timings
       const updatedMeeting: Meeting = {
@@ -669,7 +677,10 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
         status: "Processing",
         progress: 50,
         transcript: data.transcript,
-        wordTimings: data.wordTimings
+        wordTimings: data.wordTimings,
+        language: data.language || detectedLanguage,
+        languageName: data.languageName,
+        isTranslated: data.isTranslated || false
       };
 
       // Update state
@@ -851,11 +862,12 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
             {currentlyPlaying.wordTimings.map((timing, index) => (
               <span
                 key={index}
-                className={`inline-block transition-colors duration-200 ${
+                className={cn(
+                  "inline-block transition-colors duration-200",
                   index === currentWordIndex
                     ? "bg-primary/20 rounded px-1"
                     : "px-[1px]"
-                }`}
+                )}
                 onClick={() => {
                   if (mediaRef.current) {
                     mediaRef.current.currentTime = timing.start;
@@ -881,8 +893,15 @@ export function MainContent({ initialActiveTab, onTabChange }: MainContentProps)
         ))}
         {currentlyPlaying.wordTimings?.length === 0 && (
           <div className="mt-4 p-2 bg-muted rounded-md">
-            <p className="text-sm text-muted-foreground">
-              This is a translated transcript. Word-level timing information is not available for translated content.
+            <p className="text-xs text-muted-foreground">
+              {currentlyPlaying.isTranslated 
+                ? `This content was translated from ${currentlyPlaying.languageName || currentlyPlaying.language || 'another language'} to English.` 
+                : `This content is in ${currentlyPlaying.languageName || currentlyPlaying.language || 'the original language'}.`}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {currentlyPlaying.isTranslated 
+                ? "Word-level timing information is not available for translated content." 
+                : "Word-level timing information is not available for this transcript."}
             </p>
           </div>
         )}

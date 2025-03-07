@@ -21,6 +21,9 @@ export type Meeting = {
   transcript?: string;
   wordTimings?: WordTiming[];
   analysis?: MeetingAnalysis;
+  language?: string;
+  languageName?: string;
+  isTranslated?: boolean;
   uploadedBy: {
     name: string;
     email: string;

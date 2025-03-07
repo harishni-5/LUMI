@@ -102,7 +102,7 @@ export default function MeetingsPage() {
   };
 
   const handlePlayMedia = async (meeting: Meeting) => {
-    router.push(`/dashboard?meeting=${meeting.id}`);
+    router.push(`/dashboard/meetings/${meeting.id}`);
   };
 
   const handleAskAI = (meeting: Meeting) => {
@@ -216,7 +216,7 @@ export default function MeetingsPage() {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span>Analyze</span>
+                              <span>View Details</span>
                             </div>
                           )}
                         </Button>

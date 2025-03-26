@@ -3,42 +3,69 @@
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  FileAudio,
-  CheckSquare,
+  FileQuestion,
+  BookOpen,
   Settings,
   BarChart2,
   Users,
   User,
+  Database,
+  Shield,
+  Clock,
+  GraduationCap
 } from "lucide-react";
 import { useUser, UserButton } from "@clerk/nextjs";
 
-export type TabType = "overview" | "meetings" | "tasks" | "settings";
+export type TabType = "overview" | "exams" | "questions" | "students" | "results" | "settings";
 
 const navigation = [
   { name: "Overview", tab: "overview" as TabType, icon: BarChart2 },
-  { name: "Meetings", tab: "meetings" as TabType, icon: FileAudio },
-  { name: "Tasks", tab: "tasks" as TabType, icon: CheckSquare },
+  { name: "Exams", tab: "exams" as TabType, icon: BookOpen },
+  { name: "Question Bank", tab: "questions" as TabType, icon: FileQuestion },
+  { name: "Students", tab: "students" as TabType, icon: GraduationCap },
+  { name: "Results", tab: "results" as TabType, icon: BarChart2 },
   { name: "Settings", tab: "settings" as TabType, icon: Settings },
 ];
 
 interface SidebarProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  userRole?: "admin" | "faculty" | "student";
 }
 
-export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
+export function Sidebar({ activeTab, onTabChange, userRole = "faculty" }: SidebarProps) {
   const { user, isLoaded } = useUser();
+  
+  // Filter navigation based on user role
+  const filteredNavigation = navigation.filter(item => {
+    if (userRole === "admin") return true;
+    if (userRole === "faculty" && item.tab !== "students") return true;
+    if (userRole === "student" && ["overview", "exams", "results"].includes(item.tab)) return true;
+    return false;
+  });
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card px-3 py-4">
       {/* Logo */}
       <div className="flex items-center px-3 py-4">
-        <span className="text-xl font-bold">IRIS</span>
+        <span className="text-xl font-bold">ExamGenius</span>
+      </div>
+
+      {/* User Role Badge */}
+      <div className="mb-4 px-5">
+        <span className={cn(
+          "inline-block text-xs font-medium px-2 py-1 rounded",
+          userRole === "admin" ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" :
+          userRole === "faculty" ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" :
+          "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        )}>
+          {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
+        </span>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-2">
-        {navigation.map((item) => {
+        {filteredNavigation.map((item) => {
           const isActive = activeTab === item.tab;
           return (
             <button

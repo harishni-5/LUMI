@@ -46,14 +46,14 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: linear-gradient(to bottom, #ebf8ff, #ffffff);
   --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
+  --card: linear-gradient(to bottom, #e6f7ff, #ffffff);
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
+  --popover: linear-gradient(to bottom, #e1f5fe, #ffffff);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: linear-gradient(to right, #4299e1, #63b3ed);
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -61,7 +61,7 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #ffffff;
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -71,7 +71,7 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
+  --sidebar: linear-gradient(to bottom, #f0f8ff, #ffffff);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -79,14 +79,15 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  background-image: var(--background);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: linear-gradient(to bottom, #0a192f, #000000);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
+  --card: linear-gradient(to bottom, #0a1a35, #000000);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
+  --popover: linear-gradient(to bottom, #0b1d38, #000000);
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.985 0 0);
   --primary-foreground: oklch(0.205 0 0);
@@ -114,6 +115,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  background-image: var(--background);
 }
 
 @layer base {
@@ -123,6 +125,67 @@
   body {
     @apply bg-background text-foreground;
   }
+  body,
+  .bg-background,
+  .bg-card {
+    background-image: var(--background);
+    background-color: transparent;
+  }
+  .bg-card {
+    background-image: var(--card);
+  }
+  .bg-popover {
+    background-image: var(--popover);
+  }
+  
+  /* Gradient background fixes */
+  .bg-primary {
+    background-image: var(--primary);
+    background-color: transparent;
+  }
+  
+  .bg-destructive {
+    background-image: var(--destructive);
+    background-color: transparent;
+  }
+  
+  /* Dialog content fixes */
+  .Dialog, 
+  .DialogContent,
+  .DialogFooter,
+  .DialogHeader {
+    background-image: var(--popover);
+    background-color: transparent;
+  }
+  
+  .dark body,
+  .dark .bg-background,
+  .dark .bg-card {
+    background-image: var(--background);
+    background-color: transparent;
+  }
+  .dark .bg-card {
+    background-image: var(--card);
+  }
+  .dark .bg-popover {
+    background-image: var(--popover);
+  }
+}
+
+/* Add these styles to handle light mode gradients properly */
+body,
+.bg-background,
+.bg-card {
+  background-image: var(--background);
+  background-color: transparent;
+}
+
+.bg-card {
+  background-image: var(--card);
+}
+
+.bg-popover {
+  background-image: var(--popover);
 }
 
 /* Custom Scrollbar Styles */

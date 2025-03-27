@@ -5,14 +5,11 @@ import { Button } from "@/components/ui/button";
 const Navbar = () => {
   return (
     <nav className="flex justify-between items-center px-6 py-4  border-b">
-      <div className="text-xl font-bold ml-15">Iris</div>
+      <div className="text-xl font-bold ml-15">AssessHive</div>
       <div className="hidden md:flex space-x-7 text-xs ml-27 font-normal opacity-70 tracking-wide">
-        <Link href="#">Product</Link>
-        <Link href="#">Resources</Link>
-        <Link href="#">Pricing</Link>
-        <Link href="#">Customers</Link>
-        <Link href="#">Blog</Link>
-        <Link href="#">Contact</Link>
+        <Link href="#">About</Link>
+        <Link href="#">Institution</Link>
+        <Link href="#">Contact Us</Link>
       </div>
 
       {/* Authentication Buttons */}
@@ -24,20 +21,10 @@ const Navbar = () => {
       </Button>
 
       <Button asChild variant="secondary">
-      <Link href="/signup">
+      <Link href="/register">
         Sign up
       </Link>
       </Button>
-
-
-      
-
-
-      
-      
-      
-        
-        
       </div>
     </nav>
   );

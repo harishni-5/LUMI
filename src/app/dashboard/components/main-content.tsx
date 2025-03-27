@@ -55,6 +55,7 @@ import {
 import { TabType } from "./sidebar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 // Mock types for our application
 interface Exam {
@@ -253,7 +254,7 @@ const mockResults: Result[] = [
 ];
 
 // Main TabContent component
-export function TabContent({ activeTab, userRole = 'faculty' }: TabContentProps) {
+export function MainContentTabContent({ activeTab, userRole = 'faculty' }: TabContentProps) {
   const router = useRouter();
   
   // States for different actions 
@@ -290,309 +291,316 @@ export function TabContent({ activeTab, userRole = 'faculty' }: TabContentProps)
 
 // Overview Tab Component
 function OverviewTab({ userRole }: { userRole?: 'admin' | 'faculty' | 'student' }) {
-  return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Welcome Section */}
-      <section>
-        <Card className="p-6">
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <div className="md:w-2/3">
-              <h1 className="text-2xl font-bold mb-2">
-                {userRole === 'admin' ? 'Admin Dashboard' : 
-                 userRole === 'faculty' ? 'Faculty Dashboard' : 'Student Dashboard'}
-              </h1>
-              <p className="text-muted-foreground mb-4">
-                {userRole === 'admin' 
-                  ? 'Monitor all exams, manage users, and view comprehensive analytics.' 
-                  : userRole === 'faculty' 
-                  ? 'Create and manage exams, question banks, and view student performance.' 
-                  : 'Take exams, view results, and track your performance.'}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Button className="gap-2">
-                  {userRole === 'student' ? <BookOpen className="h-4 w-4" /> : <PlusCircle className="h-4 w-4" />}
-                  {userRole === 'student' ? 'View Available Exams' : 'Create New Exam'}
-                </Button>
-                <Button variant="outline" className="gap-2">
-                  {userRole === 'student' ? <Award className="h-4 w-4" /> : <FileQuestion className="h-4 w-4" />}
-                  {userRole === 'student' ? 'View Results' : 'Manage Questions'}
-                </Button>
+  const { user } = useUser();
+  const router = useRouter();
+  const [upcomingExams, setUpcomingExams] = useState<any[]>([]);
+  const [recentResults, setRecentResults] = useState<any[]>([]);
+  const [isLoadingExams, setIsLoadingExams] = useState(true);
+
+  useEffect(() => {
+    // Load data based on user role
+    if (userRole === "student") {
+      // Load exams for student
+      try {
+        setIsLoadingExams(true);
+        const savedExams = JSON.parse(localStorage.getItem('facultyExams') || '[]');
+        
+        // Filter for published or scheduled exams and sort by scheduled date
+        const parsedExams = savedExams
+          .filter((exam: any) => exam.status === "published" || exam.status === "scheduled")
+          .map((exam: any) => ({
+            ...exam,
+            scheduledFor: new Date(exam.scheduledFor)
+          }))
+          .sort((a: any, b: any) => a.scheduledFor.getTime() - b.scheduledFor.getTime())
+          .slice(0, 4); // Get only the next 4 upcoming exams
+        
+        setUpcomingExams(parsedExams);
+        setIsLoadingExams(false);
+      } catch (error) {
+        console.error('Error loading exams from localStorage:', error);
+        setIsLoadingExams(false);
+      }
+    }
+  }, [userRole]);
+
+  // Format exam date
+  const formatExamDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Get days until exam
+  const getDaysUntilExam = (date: Date) => {
+    const today = new Date();
+    const diffTime = date.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Today";
+    if (diffDays === 1) return "Tomorrow";
+    if (diffDays < 0) return "Past due";
+    return `In ${diffDays} days`;
+  };
+
+  if (userRole === 'admin') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <FileQuestion className="h-6 w-6 text-blue-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Total Exams</div>
+                <div className="text-2xl font-bold">124</div>
               </div>
             </div>
-            <div className="md:w-1/3 flex justify-center">
-              <div className="p-6 bg-primary/10 rounded-full">
-                {userRole === 'admin' ? (
-                  <Shield className="h-16 w-16 text-primary" />
-                ) : userRole === 'faculty' ? (
-                  <GraduationCap className="h-16 w-16 text-primary" />
-                ) : (
-                  <User className="h-16 w-16 text-primary" />
-                )}
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-green-100 p-3 rounded-full">
+                <Users className="h-6 w-6 text-green-700" />
               </div>
+              <div>
+                <div className="text-muted-foreground">Students</div>
+                <div className="text-2xl font-bold">1,205</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-purple-100 p-3 rounded-full">
+                <User className="h-6 w-6 text-purple-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Faculty</div>
+                <div className="text-2xl font-bold">48</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-amber-100 p-3 rounded-full">
+                <BookOpen className="h-6 w-6 text-amber-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Active Exams</div>
+                <div className="text-2xl font-bold">18</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+        
+        {/* Other admin dashboard content here */}
+      </div>
+    );
+  }
+  
+  if (userRole === 'faculty') {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold">Faculty Dashboard</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <FileQuestion className="h-6 w-6 text-blue-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">My Exams</div>
+                <div className="text-2xl font-bold">24</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-green-100 p-3 rounded-full">
+                <Users className="h-6 w-6 text-green-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Students</div>
+                <div className="text-2xl font-bold">156</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-amber-100 p-3 rounded-full">
+                <Award className="h-6 w-6 text-amber-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Avg. Score</div>
+                <div className="text-2xl font-bold">75%</div>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center space-x-2">
+              <div className="bg-red-100 p-3 rounded-full">
+                <Shield className="h-6 w-6 text-red-700" />
+              </div>
+              <div>
+                <div className="text-muted-foreground">Security Alerts</div>
+                <div className="text-2xl font-bold">3</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+        
+        {/* Other faculty dashboard content here */}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold">Welcome, {user?.firstName || 'Student'}</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="p-6">
+          <div className="flex items-center space-x-2">
+            <div className="bg-blue-100 p-3 rounded-full dark:bg-blue-900">
+              <BookOpen className="h-6 w-6 text-blue-700 dark:text-blue-300" />
+            </div>
+            <div>
+              <div className="text-muted-foreground">Upcoming Exams</div>
+              <div className="text-2xl font-bold">{upcomingExams.length}</div>
             </div>
           </div>
         </Card>
-      </section>
-
-      {/* Quick Stats */}
-      <section>
-        <h2 className="text-xl font-semibold mb-4">Quick Stats</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {userRole === 'admin' && (
-            <>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Exams</p>
-                    <h3 className="text-2xl font-bold">24</h3>
-                  </div>
-                  <div className="p-2 bg-blue-100 rounded-full dark:bg-blue-900">
-                    <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 12% from last month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Users</p>
-                    <h3 className="text-2xl font-bold">312</h3>
-                  </div>
-                  <div className="p-2 bg-indigo-100 rounded-full dark:bg-indigo-900">
-                    <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 8% from last month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Exams</p>
-                    <h3 className="text-2xl font-bold">8</h3>
-                  </div>
-                  <div className="p-2 bg-green-100 rounded-full dark:bg-green-900">
-                    <Timer className="h-5 w-5 text-green-600 dark:text-green-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-yellow-600 mt-2">↓ 5% from last month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg. Score</p>
-                    <h3 className="text-2xl font-bold">76%</h3>
-                  </div>
-                  <div className="p-2 bg-purple-100 rounded-full dark:bg-purple-900">
-                    <BarChart2 className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 3% from last month</p>
-              </Card>
-            </>
-          )}
-
-          {userRole === 'faculty' && (
-            <>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">My Exams</p>
-                    <h3 className="text-2xl font-bold">12</h3>
-                  </div>
-                  <div className="p-2 bg-blue-100 rounded-full dark:bg-blue-900">
-                    <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 2 new this month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Questions</p>
-                    <h3 className="text-2xl font-bold">145</h3>
-                  </div>
-                  <div className="p-2 bg-indigo-100 rounded-full dark:bg-indigo-900">
-                    <FileQuestion className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 15 new this month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Exams</p>
-                    <h3 className="text-2xl font-bold">3</h3>
-                  </div>
-                  <div className="p-2 bg-green-100 rounded-full dark:bg-green-900">
-                    <Timer className="h-5 w-5 text-green-600 dark:text-green-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600 mt-2">→ 2 ending this week</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg. Score</p>
-                    <h3 className="text-2xl font-bold">72%</h3>
-                  </div>
-                  <div className="p-2 bg-purple-100 rounded-full dark:bg-purple-900">
-                    <BarChart2 className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 4% from last exam</p>
-              </Card>
-            </>
-          )}
-
-          {userRole === 'student' && (
-            <>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Available Exams</p>
-                    <h3 className="text-2xl font-bold">5</h3>
-                  </div>
-                  <div className="p-2 bg-blue-100 rounded-full dark:bg-blue-900">
-                    <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-blue-600 mt-2">→ 2 new this week</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Completed Exams</p>
-                    <h3 className="text-2xl font-bold">8</h3>
-                  </div>
-                  <div className="p-2 bg-indigo-100 rounded-full dark:bg-indigo-900">
-                    <CheckCircle className="h-5 w-5 text-indigo-600 dark:text-indigo-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 2 this month</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Upcoming</p>
-                    <h3 className="text-2xl font-bold">2</h3>
-                  </div>
-                  <div className="p-2 bg-amber-100 rounded-full dark:bg-amber-900">
-                    <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-red-600 mt-2">! 1 due tomorrow</p>
-              </Card>
-              <Card className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Avg. Score</p>
-                    <h3 className="text-2xl font-bold">81%</h3>
-                  </div>
-                  <div className="p-2 bg-purple-100 rounded-full dark:bg-purple-900">
-                    <Award className="h-5 w-5 text-purple-600 dark:text-purple-300" />
-                  </div>
-                </div>
-                <p className="text-xs text-green-600 mt-2">↑ 5% improvement</p>
-              </Card>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Recent Activity / Upcoming Exams */}
-      <section>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">
-            {userRole === 'student' ? 'Upcoming Exams' : 'Recent Activity'}
-          </h2>
-        </div>
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {userRole === 'student' ? (
-                  <>
-                    <TableHead>Exam Title</TableHead>
-                    <TableHead>Subject</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </>
-                ) : (
-                  <>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Details</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {userRole === 'student' ? (
-                // Student upcoming exams
-                mockExams.filter(exam => exam.status === 'Published').slice(0, 3).map(exam => (
-                  <TableRow key={exam.id}>
-                    <TableCell className="font-medium">{exam.title}</TableCell>
-                    <TableCell>{exam.subject}</TableCell>
-                    <TableCell>{exam.startDate ? formatDate(exam.startDate) : 'N/A'}</TableCell>
-                    <TableCell>{exam.duration} mins</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        Available
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" className="gap-1">
-                        <BookOpen className="h-3 w-3" /> Take Exam
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                // Admin/Faculty recent activity
-                [
-                  { 
-                    id: '1', 
-                    activity: 'Exam Created', 
-                    user: 'Prof. Johnson', 
-                    date: '2 hours ago', 
-                    details: 'Created "Midterm Computer Science" exam' 
-                  },
-                  { 
-                    id: '2', 
-                    activity: 'Exam Published', 
-                    user: 'Prof. Smith', 
-                    date: '1 day ago', 
-                    details: 'Published "Physics Quiz 3" for CS101' 
-                  },
-                  { 
-                    id: '3', 
-                    activity: 'Questions Added', 
-                    user: 'Prof. Williams', 
-                    date: '2 days ago', 
-                    details: 'Added 15 questions to "Mathematics Final"' 
-                  }
-                ].map(activity => (
-                  <TableRow key={activity.id}>
-                    <TableCell className="font-medium">{activity.activity}</TableCell>
-                    <TableCell>{activity.user}</TableCell>
-                    <TableCell>{activity.date}</TableCell>
-                    <TableCell>{activity.details}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="ghost">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+        <Card className="p-6">
+          <div className="flex items-center space-x-2">
+            <div className="bg-green-100 p-3 rounded-full dark:bg-green-900">
+              <CheckCircle className="h-6 w-6 text-green-700 dark:text-green-300" />
+            </div>
+            <div>
+              <div className="text-muted-foreground">Completed Exams</div>
+              <div className="text-2xl font-bold">8</div>
+            </div>
+          </div>
         </Card>
-      </section>
+        <Card className="p-6">
+          <div className="flex items-center space-x-2">
+            <div className="bg-amber-100 p-3 rounded-full dark:bg-amber-900">
+              <Award className="h-6 w-6 text-amber-700 dark:text-amber-300" />
+            </div>
+            <div>
+              <div className="text-muted-foreground">Average Score</div>
+              <div className="text-2xl font-bold">82%</div>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-6">
+          <div className="flex items-center space-x-2">
+            <div className="bg-purple-100 p-3 rounded-full dark:bg-purple-900">
+              <GraduationCap className="h-6 w-6 text-purple-700 dark:text-purple-300" />
+            </div>
+            <div>
+              <div className="text-muted-foreground">Achievements</div>
+              <div className="text-2xl font-bold">3</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Upcoming Exams Card */}
+        <div className="md:col-span-2">
+          <Card>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">Upcoming Exams</h2>
+                <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/student/exams')}>
+                  View All
+                </Button>
+              </div>
+              
+              {isLoadingExams ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : upcomingExams.length === 0 ? (
+                <div className="text-center py-8 border border-dashed rounded-lg">
+                  <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No Upcoming Exams</h3>
+                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                    You don't have any upcoming exams scheduled at the moment. Check back later for updates.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {upcomingExams.map((exam, index) => (
+                    <Card key={index} className="overflow-hidden border-0 shadow-sm">
+                      <div className="p-4">
+                        <div className="flex justify-between">
+                          <div className="space-y-1">
+                            <h3 className="font-medium">{exam.title}</h3>
+                            <p className="text-sm text-muted-foreground">{exam.course}</p>
+                          </div>
+                          <Badge 
+                            className={cn(
+                              "h-fit",
+                              new Date(exam.scheduledFor) <= new Date(Date.now() + 24 * 60 * 60 * 1000)
+                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+                            )}
+                          >
+                            {getDaysUntilExam(new Date(exam.scheduledFor))}
+                          </Badge>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center">
+                              <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+                              <span>{formatExamDate(new Date(exam.scheduledFor))}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+                              <span>{exam.duration} minutes</span>
+                            </div>
+                          </div>
+                          <Button size="sm" asChild>
+                            <Link href={`/dashboard/student/exams/${exam.id}`}>
+                              View Details
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+        
+        {/* Recent Results / Activity Card */}
+        <div>
+          <Card>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Recent Results</h2>
+              <div className="space-y-4">
+                <div className="text-center py-8 border border-dashed rounded-lg">
+                  <Award className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="text-lg font-medium mb-1">No Results Yet</h3>
+                  <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                    Complete some exams to see your results and performance here.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -611,20 +619,67 @@ function formatDate(date: Date | undefined) {
 function ExamsTab({ userRole }: { userRole?: 'admin' | 'faculty' | 'student' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [facultyExams, setFacultyExams] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  
+  useEffect(() => {
+    // For students, load exams from localStorage
+    if (userRole === 'student') {
+      try {
+        setIsLoading(true);
+        const savedExams = JSON.parse(localStorage.getItem('facultyExams') || '[]');
+        
+        // Parse date strings back to Date objects
+        const parsedExams = savedExams.map((exam: any) => ({
+          ...exam,
+          createdAt: new Date(exam.createdAt),
+          scheduledFor: new Date(exam.scheduledFor),
+          // Map to match our mockExams structure
+          title: exam.title,
+          subject: exam.course,
+          duration: exam.duration,
+          totalQuestions: exam.numQuestions,
+          difficulty: exam.numQuestions <= 15 ? 'Easy' : exam.numQuestions <= 30 ? 'Medium' : 'Hard',
+          status: exam.status.charAt(0).toUpperCase() + exam.status.slice(1), // Capitalize first letter
+          createdBy: "Professor", // We don't have this info in localStorage
+          startDate: exam.scheduledFor,
+          endDate: new Date(exam.scheduledFor.getTime() + exam.duration * 60000)
+        }));
+        
+        // Filter to only show published, active, or scheduled exams
+        const availableExams = parsedExams.filter((exam: any) => 
+          exam.status === "Published" || 
+          exam.status === "Active" || 
+          exam.status === "Scheduled"
+        );
+        
+        setFacultyExams(availableExams);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading exams from localStorage:', error);
+        setIsLoading(false);
+      }
+    }
+  }, [userRole]);
   
   // Filter exams based on search term and status
-  const filteredExams = mockExams.filter(exam => {
-    const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = !statusFilter || exam.status === statusFilter;
-    
-    // For students, only show published exams
-    if (userRole === 'student') {
-      return matchesSearch && exam.status === 'Published';
-    }
-    
-    return matchesSearch && matchesStatus;
-  });
+  const filteredExams = userRole === 'student' 
+    ? facultyExams.filter(exam => {
+        const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+      })
+    : mockExams.filter(exam => {
+        const matchesSearch = exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             exam.subject.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = !statusFilter || exam.status === statusFilter;
+        return matchesSearch && matchesStatus;
+      });
+  
+  const handleViewAvailableExams = () => {
+    router.push('/dashboard/student/exams');
+  };
   
   return (
     <div className="space-y-6">
@@ -632,10 +687,17 @@ function ExamsTab({ userRole }: { userRole?: 'admin' | 'faculty' | 'student' }) 
         <h1 className="text-2xl font-bold">
           {userRole === 'student' ? 'Available Exams' : 'Manage Exams'}
         </h1>
-        {userRole !== 'student' && (
-          <Button className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Create Exam
+        {userRole === 'student' ? (
+          <Button className="gap-2" onClick={handleViewAvailableExams}>
+            <BookOpen className="h-4 w-4" />
+            View All Exams
+          </Button>
+        ) : (
+          <Button className="gap-2" asChild>
+            <Link href="/dashboard/faculty/exams/create">
+              <PlusCircle className="h-4 w-4" />
+              Create Exam
+            </Link>
           </Button>
         )}
       </div>
@@ -680,129 +742,140 @@ function ExamsTab({ userRole }: { userRole?: 'admin' | 'faculty' | 'student' }) 
       </Card>
       
       {/* Exams List */}
-      <div className="grid gap-4">
-        {filteredExams.length > 0 ? (
-          filteredExams.map(exam => (
-            <Card key={exam.id} className="p-4 hover:shadow-md transition-shadow">
-              <div className="flex flex-col md:flex-row md:items-center justify-between">
-                <div className="md:w-1/3">
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-lg">{exam.title}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{exam.subject}</p>
-                </div>
-                
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-6 mt-2 md:mt-0">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Questions</p>
-                    <p className="font-medium">{exam.totalQuestions}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Duration</p>
-                    <p className="font-medium">{exam.duration} mins</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Difficulty</p>
-                    <Badge variant="outline" className={cn(
-                      exam.difficulty === 'Easy' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                      exam.difficulty === 'Medium' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' :
-                      'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    )}>
-                      {exam.difficulty}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge variant="outline" className={cn(
-                      exam.status === 'Published' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                      exam.status === 'Draft' ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' :
-                      'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                    )}>
-                      {exam.status}
-                    </Badge>
-                  </div>
-                  {exam.startDate && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Date</p>
-                      <p className="font-medium">{formatDate(exam.startDate)}</p>
+      {isLoading && userRole === 'student' ? (
+        <Card className="p-8">
+          <div className="text-center">
+            <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p>Loading available exams...</p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {filteredExams.length > 0 ? (
+            filteredExams.map(exam => (
+              <Card key={exam.id} className="p-4 hover:shadow-md transition-shadow">
+                <div className="flex flex-col md:flex-row md:items-center justify-between">
+                  <div className="md:w-1/3">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      <h3 className="font-semibold text-lg">{exam.title}</h3>
                     </div>
-                  )}
-                </div>
-                
-                <div className="flex items-center gap-2 mt-3 md:mt-0">
-                  {userRole === 'student' ? (
-                    <Button className="gap-2" size="sm">
-                      <BookOpen className="h-4 w-4" />
-                      Take Exam
-                    </Button>
-                  ) : (
-                    <>
-                      <Button variant="outline" size="sm">
-                        <Eye className="h-4 w-4" />
+                    <p className="text-sm text-muted-foreground mt-1">{exam.subject}</p>
+                  </div>
+                  
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-6 mt-2 md:mt-0">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Questions</p>
+                      <p className="font-medium">{exam.totalQuestions}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Duration</p>
+                      <p className="font-medium">{exam.duration} mins</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Difficulty</p>
+                      <Badge variant="outline" className={cn(
+                        exam.difficulty === 'Easy' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                        exam.difficulty === 'Medium' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' :
+                        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                      )}>
+                        {exam.difficulty}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <Badge variant="outline" className={cn(
+                        exam.status === 'Published' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                        exam.status === 'Draft' ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' :
+                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                      )}>
+                        {exam.status}
+                      </Badge>
+                    </div>
+                    {exam.startDate && (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Date</p>
+                        <p className="font-medium">{formatDate(exam.startDate)}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-3 md:mt-0">
+                    {userRole === 'student' ? (
+                      <Button className="gap-2" size="sm">
+                        <BookOpen className="h-4 w-4" />
+                        Take Exam
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          {exam.status === 'Draft' && (
+                    ) : (
+                      <>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem>
-                              <BookOpen className="h-4 w-4 mr-2" />
-                              Publish
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
                             </DropdownMenuItem>
-                          )}
-                          {exam.status === 'Published' && (
+                            {exam.status === 'Draft' && (
+                              <DropdownMenuItem>
+                                <BookOpen className="h-4 w-4 mr-2" />
+                                Publish
+                              </DropdownMenuItem>
+                            )}
+                            {exam.status === 'Published' && (
+                              <DropdownMenuItem>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Results
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem>
-                              <Download className="h-4 w-4 mr-2" />
-                              Download Results
+                              <Copy className="h-4 w-4 mr-2" />
+                              Duplicate
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem>
-                            <Copy className="h-4 w-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600 dark:text-red-400">
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600 dark:text-red-400">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                  </div>
                 </div>
+              </Card>
+            ))
+          ) : (
+            <Card className="p-8">
+              <div className="text-center">
+                <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No exams found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm 
+                    ? "No exams match your search criteria. Try adjusting your filters."
+                    : userRole === 'student'
+                    ? "There are no exams available for you at the moment."
+                    : "You haven't created any exams yet. Get started by creating your first exam."}
+                </p>
+                {userRole !== 'student' && !searchTerm && (
+                  <Button className="mt-4 gap-2" asChild>
+                    <Link href="/dashboard/faculty/exams/create">
+                      <PlusCircle className="h-4 w-4" />
+                      Create Exam
+                    </Link>
+                  </Button>
+                )}
               </div>
             </Card>
-          ))
-        ) : (
-          <Card className="p-8">
-            <div className="text-center">
-              <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No exams found</h3>
-              <p className="text-muted-foreground">
-                {searchTerm 
-                  ? "No exams match your search criteria. Try adjusting your filters."
-                  : userRole === 'student'
-                  ? "There are no exams available for you at the moment."
-                  : "You haven't created any exams yet. Get started by creating your first exam."}
-              </p>
-              {userRole !== 'student' && !searchTerm && (
-                <Button className="mt-4 gap-2">
-                  <PlusCircle className="h-4 w-4" />
-                  Create Exam
-                </Button>
-              )}
-            </div>
-          </Card>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -950,7 +1023,7 @@ function QuestionsTab() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-10">
-                  {question.options.map(option => (
+                  {question.options.map((option, index) => (
                     <div key={option.id} className="flex items-center gap-2">
                       <div className={cn(
                         "p-1 rounded-full h-6 w-6 flex items-center justify-center text-xs font-medium",
@@ -958,7 +1031,7 @@ function QuestionsTab() {
                           ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
                           : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
                       )}>
-                        {option.id.toUpperCase()}
+                        {String.fromCharCode(65 + index)}
                       </div>
                       <span className={cn(
                         option.id === question.correctOption && "font-medium"
@@ -1488,6 +1561,3 @@ function SettingsTab({ userRole }: { userRole?: 'admin' | 'faculty' | 'student' 
     </div>
   );
 }
-
-// Export all components for use in the app
-export { TabContent };

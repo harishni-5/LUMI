@@ -12,18 +12,28 @@ import {
   Database,
   Shield,
   Clock,
-  GraduationCap
+  GraduationCap,
+  LayoutDashboard,
+  ChevronLeft,
+  ChevronRight,
+  Award,
+  BookOpenCheck,
+  Activity,
+  Bell
 } from "lucide-react";
 import { useUser, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 
-export type TabType = "overview" | "exams" | "questions" | "students" | "results" | "settings";
+export type TabType = "overview" | "exams" | "questions" | "students" | "results" | "settings" | "activities" | "notifications";
 
 const navigation = [
   { name: "Overview", tab: "overview" as TabType, icon: BarChart2 },
+  { name: "Activities", tab: "activities" as TabType, icon: Activity, roles: ["admin"] },
   { name: "Exams", tab: "exams" as TabType, icon: BookOpen },
   { name: "Question Bank", tab: "questions" as TabType, icon: FileQuestion },
+  { name: "Notifications", tab: "notifications" as TabType, icon: Bell, roles: ["admin", "faculty"] },
   { name: "Students", tab: "students" as TabType, icon: GraduationCap },
-  { name: "Results", tab: "results" as TabType, icon: BarChart2 },
+  { name: "Results", tab: "results" as TabType, icon: BookOpenCheck },
   { name: "Settings", tab: "settings" as TabType, icon: Settings },
 ];
 
@@ -38,6 +48,12 @@ export function Sidebar({ activeTab, onTabChange, userRole = "faculty" }: Sideba
   
   // Filter navigation based on user role
   const filteredNavigation = navigation.filter(item => {
+    // If the item has specific roles defined, check if current role is included
+    if (item.roles) {
+      return item.roles.includes(userRole);
+    }
+    
+    // Otherwise use the default role-based filtering
     if (userRole === "admin") return true;
     if (userRole === "faculty" && item.tab !== "students") return true;
     if (userRole === "student" && ["overview", "exams", "results"].includes(item.tab)) return true;
@@ -68,19 +84,15 @@ export function Sidebar({ activeTab, onTabChange, userRole = "faculty" }: Sideba
         {filteredNavigation.map((item) => {
           const isActive = activeTab === item.tab;
           return (
-            <button
+            <MenuItem
               key={item.name}
+              icon={item.icon}
+              label={item.name}
+              isActive={isActive}
               onClick={() => onTabChange(item.tab)}
-              className={cn(
-                "group flex w-full items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </button>
+              isCollapsed={false}
+              userRole={userRole}
+            />
           );
         })}
       </nav>
@@ -100,5 +112,57 @@ export function Sidebar({ activeTab, onTabChange, userRole = "faculty" }: Sideba
         </div>
       </div>
     </div>
+  );
+}
+
+function MenuItem({ 
+  icon: Icon, 
+  label, 
+  isActive, 
+  onClick, 
+  isCollapsed,
+  userRole
+}: { 
+  icon: any; 
+  label: string; 
+  isActive: boolean; 
+  onClick: () => void; 
+  isCollapsed: boolean;
+  userRole: string;
+}) {
+  // Determine the route for the link based on tab and user role
+  const getRoute = () => {
+    const baseRoute = "/dashboard";
+    
+    // Specific routes for exams
+    if (label.toLowerCase() === "exams" && userRole === "faculty") {
+      return `${baseRoute}/faculty/exams`;
+    }
+    
+    // Route for notifications
+    if (label.toLowerCase() === "notifications") {
+      return `${baseRoute}/${userRole}/notifications`;
+    }
+    
+    // Default route pattern
+    return `${baseRoute}/${userRole}?tab=${label.toLowerCase()}`;
+  };
+
+  return (
+    <Link href={getRoute()} className="no-underline w-full">
+      <button
+        className={cn(
+          "flex items-center gap-3 w-full px-3 py-2 rounded-md transition-colors",
+          isActive
+            ? "bg-primary text-primary-foreground"
+            : "hover:bg-muted"
+        )}
+        onClick={onClick}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <Icon className="h-5 w-5" />
+        {!isCollapsed && <span>{label}</span>}
+      </button>
+    </Link>
   );
 } 

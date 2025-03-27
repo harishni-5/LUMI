@@ -1,11 +1,47 @@
 "use client"; 
 import { motion } from "framer-motion";
 import NavbarWrapper from "./components/NavbarWrapper";
+import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure theme toggle only renders on client side to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <div className="h-screen overflow-y-auto flex flex-col">
       <NavbarWrapper />
+
+      {/* Theme Toggle Button */}
+      {mounted && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.5 }}
+          className="fixed top-6 right-6 z-50"
+        >
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            aria-label="Toggle theme"
+            className="rounded-full w-10 h-10 shadow-md border-2 transition-all duration-300 hover:shadow-lg dark:bg-gray-800 light:bg-white"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-5 w-5 text-yellow-400" />
+            ) : (
+              <Moon className="h-5 w-5 text-indigo-700" />
+            )}
+          </Button>
+        </motion.div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-8 mt-50">
         <motion.h1

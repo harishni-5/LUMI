@@ -58,8 +58,4 @@ Future Enhancements
 •	Adaptive Testing for Dynamic Difficulty Adjustments
 •	Enhanced Reporting & Insights for Faculty & Admin
 •	Student flagging
-Contributors
-•	Vishnu CV – 23BRS1153
-•	Kaavya Ravichandran- 23BDS1108
-•	Harishni A – 23BDS1070
-•	Kavya G – 23BDS1132
+
